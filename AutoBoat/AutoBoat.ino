@@ -110,7 +110,8 @@ void setup()
     Serial.println("Ooops, no LSM303 detected ... Check your wiring!");
     while(1);
   }
-
+  else
+    Serial.println("LSM303 compass detected.");
 }
 
 void loop() 
@@ -120,27 +121,27 @@ void loop()
   // (note: line 1 is the second row, since counting begins with 0):
   lcd.setCursor(0, 0);
   
-/////////////////////////////////////////////////////////////////////
   float latitude, longitude, speed_kph, heading, speed_mph, altitude;
 
   // if you ask for an altitude reading, getGPS will return false if there isn't a 3D fix
   boolean gps_success = fona.getGPS(&latitude, &longitude, &speed_kph, &heading, &altitude);
 
-  if (gps_success) {
+  if (gps_success) 
+  {
 
-//    Serial.print("GPS lat:");
-//    Serial.println(latitude, 6);
-//    Serial.print("GPS long:");
-//    Serial.println(longitude, 6);
-//    Serial.print("GPS speed KPH:");
-//    Serial.println(speed_kph);
-//    Serial.print("GPS speed MPH:");
-//    speed_mph = speed_kph * 0.621371192;
-//    Serial.println(speed_mph);
+//  Serial.print("GPS lat:");
+//  Serial.println(latitude, 6);
+//  Serial.print("GPS long:");
+//  Serial.println(longitude, 6);
+//  Serial.print("GPS speed KPH:");
+//  Serial.println(speed_kph);
+//  Serial.print("GPS speed MPH:");
+//  speed_mph = speed_kph * 0.621371192;
+//  Serial.println(speed_mph);
    Serial.print("GPS heading:");
    Serial.println(heading);
- //   Serial.print("GPS altitude:");
-//    Serial.println(altitude);
+//  Serial.print("GPS altitude:");
+//  Serial.println(altitude);
   } 
   else 
   {
@@ -150,6 +151,9 @@ void loop()
     return;
   }
 
+  //Get the compass heading
+  heading = calcCompassHeading() ;
+  
   float lat2 = 32.376948F ;//32.370282F;
   float lon2 = 34.863807F ;//34.861653F;
   int bearing = CalcBearing(latitude, longitude, lat2, lon2);
@@ -184,7 +188,7 @@ void loop()
   lcd.print(turn);
   lcd.print(" D:");
   lcd.print(distance);
-  
+
   delay(5000);
 }
 
@@ -319,5 +323,27 @@ void ComputeDestPoint(double lat1, double lon1, int iBear, int iDist, double *la
 void turnTo(int degrees)
 {
 
+}
+
+float calcCompassHeading(void) 
+{
+  /* Get a new sensor event */ 
+  sensors_event_t event; 
+  mag.getEvent(&event);
+  
+  float Pi = 3.14159;
+  
+  // Calculate the angle of the vector y,x
+  float heading = (atan2(event.magnetic.y,event.magnetic.x) * 180) / Pi;
+  
+  // Normalize to 0-360
+  if (heading < 0)
+  {
+    heading = 360 + heading;
+  }
+  Serial.print("Compass Heading: ");
+  Serial.println(heading);
+
+  return heading;
 }
 
