@@ -30,15 +30,16 @@ char replybuffer[255];
 // (because softserial isnt supported) comment out the following three lines 
 // and uncomment the HardwareSerial line
 #include <SoftwareSerial.h>
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_LSM303_U.h>
+#include <LiquidCrystal.h>
+
 SoftwareSerial fonaSS = SoftwareSerial(FONA_TX, FONA_RX);
 SoftwareSerial *fonaSerial = &fonaSS;
 
-// include the Servo library
-#include <Servo.h>
-
-Servo myServo;  // create a servo object
-// Hardware serial is also possible!
-//  HardwareSerial *fonaSerial = &Serial1;
+/* Assign a unique ID to this compass sensor at the same time */
+Adafruit_LSM303_Mag_Unified mag = Adafruit_LSM303_Mag_Unified(12345);
 
 // Use this for FONA 800 and 808s
 Adafruit_FONA fona = Adafruit_FONA(FONA_RST);
@@ -46,30 +47,22 @@ Adafruit_FONA fona = Adafruit_FONA(FONA_RST);
 //Adafruit_FONA_3G fona = Adafruit_FONA_3G(FONA_RST);
 
 uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout = 0);
-
 uint8_t type;
-
-
-// include the library code:
-#include <LiquidCrystal.h>
 
 // initialize the library by associating any needed LCD interface pin
 // with the arduino pin number it is connected to
 const int rs = 12, en = 11, d4 = 8, d5 = 7, d6 = 6, d7 = 5;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
-
 void setup() 
 {
-  // attaches the servo on pin 9 to the servo object
-  myServo.attach(9); 
   // set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
   
   while (!Serial);
 
   Serial.begin(115200);
-  Serial.println(F("FONA basic test"));
+  Serial.println(F("Looking for FONA808"));
   Serial.println(F("Initializing....(May take 3 seconds)"));
 
   fonaSerial->begin(4800);
@@ -104,13 +97,20 @@ void setup()
     Serial.print("Module IMEI: "); Serial.println(imei);
   }
 
-/////////////////////////////////
-// turn GPS on
-    if (!fona.enableGPS(true))
-      Serial.println(F("Failed to turn on"));
-    else
-      Serial.println(F("GPS turned on"));
-/////////////////////////////////
+  // turn GPS on
+  if (!fona.enableGPS(true))
+    Serial.println(F("Failed to turn on"));
+  else
+    Serial.println(F("GPS turned on"));
+
+  // Initialise the compass
+  if(!mag.begin())
+  {
+    /* There was a problem detecting the LSM303 ... check your connections */
+    Serial.println("Ooops, no LSM303 detected ... Check your wiring!");
+    while(1);
+  }
+
 }
 
 void loop() 
@@ -294,12 +294,6 @@ long CalcDistance(double lat1, double lon1, double lat2, double lon2)
 //Returns bearing in degrees
 int CalcBearing(double lat1, double lon1, double lat2, double lon2)
 {
-  // ?????????????????? why again?
-//  lat1 = dtor(lat1);
-//  lon1 = dtor(lon1);
-//  lat2 = dtor(lat2);
-//  lon2 = dtor(lon2);
-  
   //determine angle
   double bearing = atan2(sin(lon2-lon1)*cos(lat2), (cos(lat1)*sin(lat2))-(sin(lat1)*cos(lat2)*cos(lon2-lon1)));
   //convert to degrees
@@ -324,10 +318,6 @@ void ComputeDestPoint(double lat1, double lon1, int iBear, int iDist, double *la
 
 void turnTo(int degrees)
 {
-  // Set rotor streight
-  myServo.write(90);
-  
-  // set the servo position
-  //myServo.write(degrees);
+
 }
 
