@@ -138,15 +138,15 @@ void loop()
 //  Serial.print("GPS speed MPH:");
 //  speed_mph = speed_kph * 0.621371192;
 //  Serial.println(speed_mph);
-   Serial.print("GPS heading:");
-   Serial.println(heading);
+    Serial.print("GPS heading:");
+    Serial.println(heading);
 //  Serial.print("GPS altitude:");
 //  Serial.println(altitude);
   } 
   else 
   {
     Serial.println("Waiting for FONA GPS 3D fix...");
-     // print NO GPS on LCD
+    // print NO GPS on LCD
     lcd.print("No GPS Fix )-:");
     return;
   }
@@ -170,13 +170,14 @@ void loop()
   Serial.print("Turn: ");
   Serial.print(turn);
   if(turn < 0)
-      Serial.println(" degrees LEFT");
-    else
-      Serial.println(" degrees RIGHT");
+    Serial.println(" degrees LEFT");
+  else
+    Serial.println(" degrees RIGHT");
 
   // Command the Servo to make the actual turn
   turnTo(turn) ;
 
+  // Print data to LCD
   lcd.clear();
   lcd.print(latitude);
   lcd.print(" : ");
@@ -192,24 +193,24 @@ void loop()
   delay(5000);
 }
 
-void flushSerial() {
-  while (Serial.available())
-    Serial.read();
-}
-
-char readBlocking() {
+char readBlocking() 
+{
   while (!Serial.available());
   return Serial.read();
 }
-uint16_t readnumber() {
+
+uint16_t readnumber() 
+{
   uint16_t x = 0;
   char c;
-  while (! isdigit(c = readBlocking())) {
+  while (! isdigit(c = readBlocking())) 
+  {
     //Serial.print(c);
   }
   Serial.print(c);
   x = c - '0';
-  while (isdigit(c = readBlocking())) {
+  while (isdigit(c = readBlocking())) 
+  {
     Serial.print(c);
     x *= 10;
     x += c - '0';
@@ -217,18 +218,21 @@ uint16_t readnumber() {
   return x;
 }
 
-uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout) {
+uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout) 
+{
   uint16_t buffidx = 0;
   boolean timeoutvalid = true;
   if (timeout == 0) timeoutvalid = false;
 
   while (true) {
-    if (buffidx > maxbuff) {
+    if (buffidx > maxbuff) 
+    {
       //Serial.println(F("SPACE"));
       break;
     }
 
-    while (Serial.available()) {
+    while (Serial.available()) 
+    {
       char c =  Serial.read();
 
       //Serial.print(c, HEX); Serial.print("#"); Serial.println(c);
@@ -246,7 +250,8 @@ uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout) {
       buffidx++;
     }
 
-    if (timeoutvalid && timeout == 0) {
+    if (timeoutvalid && timeout == 0) 
+    {
       //Serial.println(F("TIMEOUT"));
       break;
     }
