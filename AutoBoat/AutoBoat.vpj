@@ -214,8 +214,10 @@
         </Folder>
     </CustomFolders>
     <Files AutoFolders="DirectoryView">
+        <Folder Name="Motor_Test">
+            <F N="Motor_Test/motor_test.ino"/>
+        </Folder>
         <F N="Boat.cpp"/>
         <F N="Boat.h"/>
-        <F N="boat.ino"/>
     </Files>
 </Project>
