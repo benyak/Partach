@@ -31,15 +31,15 @@ char replybuffer[255];
 // and uncomment the HardwareSerial line
 #include <SoftwareSerial.h>
 #include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_LSM303_U.h>
+#include <LSM303.h> // Using the Pololu library for the Compass due to lack of calibration code on Adafruit
+//#include <Adafruit_Sensor.h>
+//#include <Adafruit_LSM303_U.h>
 #include <LiquidCrystal.h>
 
 SoftwareSerial fonaSS = SoftwareSerial(FONA_TX, FONA_RX);
 SoftwareSerial *fonaSerial = &fonaSS;
+LSM303 compass;
 
-/* Assign a unique ID to this compass sensor at the same time */
-Adafruit_LSM303_Mag_Unified mag = Adafruit_LSM303_Mag_Unified(12345);
 
 // Use this for FONA 800 and 808s
 Adafruit_FONA fona = Adafruit_FONA(FONA_RST);
@@ -104,14 +104,17 @@ void setup()
     Serial.println(F("GPS turned on"));
 
   // Initialise the compass
-  if(!mag.begin())
-  {
-    /* There was a problem detecting the LSM303 ... check your connections */
-    Serial.println("Ooops, no LSM303 detected ... Check your wiring!");
-    while(1);
-  }
-  else
-    Serial.println("LSM303 compass detected.");
+  Wire.begin();
+  compass.init();
+  compass.enableDefault();
+  
+  /*
+  Calibration values; the default values of +/-32767 for each axis
+  lead to an assumed magnetometer bias of 0. Use the Calibrate example
+  program to determine appropriate values for your particular unit.
+  */
+  compass.m_min = (LSM303::vector<int16_t>){-452,   -562,   -384};
+  compass.m_max = (LSM303::vector<int16_t>){+572,   +331,   +553};
 }
 
 void loop() 
@@ -152,7 +155,17 @@ void loop()
   }
 
   //Get the compass heading
-  heading = calcCompassHeading() ;
+  compass.read();
+  
+  /*
+  When given no arguments, the heading() function returns the angular
+  difference in the horizontal plane between a default vector and
+  north, in degrees.
+  Use the +X axis as a reference. 
+  */
+  heading = compass.heading((LSM303::vector<int>){1, 0, 0});
+  Serial.print("Compass Heading: ");
+  Serial.println(heading);
   
   float lat2 = 32.376948F ;//32.370282F;
   float lon2 = 34.863807F ;//34.861653F;
@@ -190,7 +203,7 @@ void loop()
   lcd.print(" D:");
   lcd.print(distance);
 
-  delay(5000);
+  delay(2000);
 }
 
 char readBlocking() 
@@ -330,25 +343,4 @@ void turnTo(int degrees)
 
 }
 
-float calcCompassHeading(void) 
-{
-  /* Get a new sensor event */ 
-  sensors_event_t event; 
-  mag.getEvent(&event);
-  
-  float Pi = 3.14159;
-  
-  // Calculate the angle of the vector y,x
-  float heading = (atan2(event.magnetic.y,event.magnetic.x) * 180) / Pi;
-  
-  // Normalize to 0-360
-  if (heading < 0)
-  {
-    heading = 360 + heading;
-  }
-  Serial.print("Compass Heading: ");
-  Serial.println(heading);
-
-  return heading;
-}
 
