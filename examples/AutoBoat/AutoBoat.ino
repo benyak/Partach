@@ -31,15 +31,14 @@ char replybuffer[255];
 // and uncomment the HardwareSerial line
 #include <SoftwareSerial.h>
 #include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_LSM303_U.h>
-#include <LiquidCrystal.h>
+#include <LSM303.h> // Using the Pololu library for the Compass due to lack of calibration code on Adafruit
+//#include <Adafruit_Sensor.h>
+//#include <Adafruit_LSM303_U.h>
 
 SoftwareSerial fonaSS = SoftwareSerial(FONA_TX, FONA_RX);
 SoftwareSerial *fonaSerial = &fonaSS;
+LSM303 compass; 
 
-/* Assign a unique ID to this compass sensor at the same time */
-Adafruit_LSM303_Mag_Unified mag = Adafruit_LSM303_Mag_Unified(12345);
 
 // Use this for FONA 800 and 808s
 Adafruit_FONA fona = Adafruit_FONA(FONA_RST);
@@ -49,16 +48,8 @@ Adafruit_FONA fona = Adafruit_FONA(FONA_RST);
 uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout = 0);
 uint8_t type;
 
-// initialize the library by associating any needed LCD interface pin
-// with the arduino pin number it is connected to
-const int rs = 12, en = 11, d4 = 8, d5 = 7, d6 = 6, d7 = 5;
-LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
-
 void setup() 
 {
-  // set up the LCD's number of columns and rows:
-  lcd.begin(16, 2);
-  
   while (!Serial);
 
   Serial.begin(115200);
@@ -93,9 +84,12 @@ void setup()
   // Print module IMEI number.
   char imei[16] = {0}; // MUST use a 16 character buffer for IMEI!
   uint8_t imeiLen = fona.getIMEI(imei);
-  if (imeiLen > 0) {
+  if (imeiLen > 0) 
+  {
     Serial.print("Module IMEI: "); Serial.println(imei);
   }
+  //set up the FONA to send a +CMTI notification when an SMS is received
+  fonaSerial->print("AT+CNMI=2,1\r\n"); 
 
   // turn GPS on
   if (!fona.enableGPS(true))
@@ -104,22 +98,98 @@ void setup()
     Serial.println(F("GPS turned on"));
 
   // Initialise the compass
-  if(!mag.begin())
-  {
-    /* There was a problem detecting the LSM303 ... check your connections */
-    Serial.println("Ooops, no LSM303 detected ... Check your wiring!");
-    while(1);
-  }
-  else
-    Serial.println("LSM303 compass detected.");
+  Wire.begin();
+  compass.init();
+  compass.enableDefault();
+  
+  /*
+  Calibration values; the default values of +/-32767 for each axis
+  lead to an assumed magnetometer bias of 0. Use the Calibrate example
+  program to determine appropriate values for your particular unit.
+  */
+  compass.m_min = (LSM303::vector<int16_t>){-452,   -562,   -384};
+  compass.m_max = (LSM303::vector<int16_t>){+572,   +331,   +553};
 }
+
+char fonaNotificationBuffer[64];          //for notifications from the FONA
+char smsBuffer[250];
 
 void loop() 
 {
-  ////////////// LCD 
-  // set the cursor to column 0, line 1
-  // (note: line 1 is the second row, since counting begins with 0):
-  lcd.setCursor(0, 0);
+/***************************************************************************************************/
+  char* bufPtr = fonaNotificationBuffer;    //handy buffer pointer
+  
+  if (fona.available())      //any data available from the FONA?
+  {
+    int slot = 0;            //this will be the slot number of the SMS
+    int charCount = 0;
+    //Read the notification into fonaInBuffer
+    do  
+    {
+      *bufPtr = fona.read();
+      Serial.write(*bufPtr);
+      delay(1);
+    } 
+    while ((*bufPtr++ != '\n') && (fona.available()) && (++charCount < (sizeof(fonaNotificationBuffer)-1)));
+    
+    //Add a terminal NULL to the notification string
+    *bufPtr = 0;
+
+    //Scan the notification string for an SMS received notification.
+    //  If it's an SMS message, we'll get the slot number in 'slot'
+    if (1 == sscanf(fonaNotificationBuffer, "+CMTI: " FONA_PREF_SMS_STORAGE ",%d", &slot)) 
+    {
+      Serial.println("******* SMS Code ******");
+      
+      Serial.print("slot: "); 
+      Serial.println(slot);
+      
+      char callerIDbuffer[32];  //we'll store the SMS sender number in here
+      
+      // Retrieve SMS sender address/phone number.
+      if (! fona.getSMSSender(slot, callerIDbuffer, 31)) 
+      {
+        Serial.println("Didn't find SMS message in slot!");
+      }
+      Serial.print(F("FROM: ")); Serial.println(callerIDbuffer);
+
+        // Retrieve SMS value.
+        uint16_t smslen;
+        if (fona.readSMS(slot, smsBuffer, 250, &smslen)) 
+        { // pass in buffer and max len!
+          Serial.println(smsBuffer);
+        }
+/*
+      //Send back an automatic response
+      Serial.println("Sending reponse...");
+      if (!fona.sendSMS(callerIDbuffer, "Hey, I got your text!")) 
+      {
+        Serial.println(F("Failed"));
+      } else 
+      {
+        Serial.println(F("Sent!"));
+      }
+*/
+      
+      // delete the original msg after it is processed
+      //   otherwise, we will fill up all the slots
+      //   and then we won't be able to receive SMS anymore
+      if (fona.deleteSMS(slot)) 
+      {
+        Serial.println(F("OK!"));
+      } 
+      else 
+      {
+        Serial.print(F("Couldn't delete SMS in slot ")); Serial.println(slot);
+        fona.print(F("AT+CMGD=?\r\n"));
+      }
+    }
+  }
+
+
+
+
+ /*********************************************************************************************/
   
   float latitude, longitude, speed_kph, heading, speed_mph, altitude;
 
@@ -146,13 +216,22 @@ void loop()
   else 
   {
     Serial.println("Waiting for FONA GPS 3D fix...");
-    // print NO GPS on LCD
-    lcd.print("No GPS Fix )-:");
+
     return;
   }
 
   //Get the compass heading
-  heading = calcCompassHeading() ;
+  compass.read();
+  
+  /*
+  When given no arguments, the heading() function returns the angular
+  difference in the horizontal plane between a default vector and
+  north, in degrees.
+  Use the +X axis as a reference. 
+  */
+  heading = compass.heading((LSM303::vector<int>){1, 0, 0});
+  Serial.print("Compass Heading: ");
+  Serial.println(heading);
   
   float lat2 = 32.376948F ;//32.370282F;
   float lon2 = 34.863807F ;//34.861653F;
@@ -177,22 +256,9 @@ void loop()
   // Command the Servo to make the actual turn
   turnTo(turn) ;
 
-  // Print data to LCD
-  lcd.clear();
-  lcd.print(latitude);
-  lcd.print(" : ");
-  lcd.print(longitude);
-  lcd.setCursor(0, 1);
-  lcd.print("H:");
-  lcd.print(bearing);
-  lcd.print(" T:");
-  lcd.print(turn);
-  lcd.print(" D:");
-  lcd.print(distance);
-
-  delay(5000);
+  delay(2000);
 }
-
+/*
 char readBlocking() 
 {
   while (!Serial.available());
@@ -217,7 +283,7 @@ uint16_t readnumber()
   }
   return x;
 }
-
+*/
 uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout) 
 {
   uint16_t buffidx = 0;
@@ -329,26 +395,3 @@ void turnTo(int degrees)
 {
 
 }
-
-float calcCompassHeading(void) 
-{
-  /* Get a new sensor event */ 
-  sensors_event_t event; 
-  mag.getEvent(&event);
-  
-  float Pi = 3.14159;
-  
-  // Calculate the angle of the vector y,x
-  float heading = (atan2(event.magnetic.y,event.magnetic.x) * 180) / Pi;
-  
-  // Normalize to 0-360
-  if (heading < 0)
-  {
-    heading = 360 + heading;
-  }
-  Serial.print("Compass Heading: ");
-  Serial.println(heading);
-
-  return heading;
-}
-
