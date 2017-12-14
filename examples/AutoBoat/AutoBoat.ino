@@ -183,13 +183,13 @@ void loop()
   Serial.print(distance);
   Serial.println(" meters");
 
+  // Normalize turn
   int turn = bearing - heading ;
+  if(turn < 0)
+    turn += 360 ;
+
   Serial.print("Turn: ");
   Serial.print(turn);
-  if(turn < 0)
-    Serial.println(" degrees LEFT");
-  else
-    Serial.println(" degrees RIGHT");
 
   // Command the Servo to make the actual turn
   turnTo(turn) ;
