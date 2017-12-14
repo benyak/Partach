@@ -33,6 +33,11 @@ char replybuffer[255];
 #include <Wire.h>
 #include <LSM303.h> // Using the Pololu library for the Compass due to lack of calibration code on Adafruit
 
+#include "Boat.h"
+
+// Init the Boat object for controlling the engines.
+Boat myBoat(5,6) ;
+
 SoftwareSerial fonaSS = SoftwareSerial(FONA_TX, FONA_RX);
 SoftwareSerial *fonaSerial = &fonaSS;
 LSM303 compass; 
@@ -40,6 +45,10 @@ LSM303 compass;
 // In STANDBY mode we are not moving. Once we get coordinated we start 
 // navigating until the state is changed to STANDBY.
 enum state {STANDBY=0, NAVIGATE=1} boatState ;
+
+// Destination coordinates
+float dstLat = 0.00F ;//32.376948F;
+float dstLon = 0.00F ;//34.863807F;
 
 // Use this for FONA 800 and 808s
 Adafruit_FONA fona = Adafruit_FONA(FONA_RST);
@@ -129,8 +138,22 @@ void loop()
       // Try to figure out what we got in the SMS.
       // Can be new coordinates that will kickout a rescue,
       // or a standby command that will stop navigation.
-      
-      
+      char lonStr[10], latStr[10];
+      int result = sscanf(smsBuffer, "%[^','],%s", latStr, lonStr);
+
+      if(result ==2) // Found 2 coordinates, navigate to it
+      {
+        Serial.println("Navigating to destination"); 
+        boatState = NAVIGATE ;
+        // Update destination coordinates
+        dstLat = atof(latStr);
+        dstLon  = atof(lonStr);
+      }
+      else
+      {
+        // We stop navigating
+        boatState = STANDBY ;
+      }   
   }
 
  /*********************************************************************************************/
@@ -160,17 +183,19 @@ void loop()
   Serial.print("Compass Heading: ");
   Serial.println(heading);
   
-  float lat2 = 32.376948F ;//32.370282F;
-  float lon2 = 34.863807F ;//34.861653F;
-  int bearing = CalcBearing(latitude, longitude, lat2, lon2);
+  int bearing = CalcBearing(latitude, longitude, dstLat, dstLon);
   Serial.print("Bearing to office: ");
   Serial.print(bearing);
   Serial.println(" degrees");
   
-  long distance = CalcDistance(latitude, longitude, lat2, lon2) ;
+  long distance = CalcDistance(latitude, longitude, dstLat, dstLon) ;
   Serial.print("Distance to office: ");
   Serial.print(distance);
   Serial.println(" meters");
+
+  // TODO - stop????
+  if(distance < 5)
+    boatState = STANDBY ;
 
   // Normalize turn
   int turn = bearing - heading ;
@@ -181,7 +206,10 @@ void loop()
   Serial.print(turn);
 
   // Command the Servo to make the actual turn
-  turnTo(turn) ;
+  if(boatState == STANDBY)
+    myBoat.stop() ;
+  else
+    myBoat.turn(turn) ;
 
   delay(2000);
 }
