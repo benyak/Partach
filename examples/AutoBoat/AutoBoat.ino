@@ -32,26 +32,29 @@ char replybuffer[255];
 #include <SoftwareSerial.h>
 #include <Wire.h>
 #include <LSM303.h> // Using the Pololu library for the Compass due to lack of calibration code on Adafruit
-//#include <Adafruit_Sensor.h>
-//#include <Adafruit_LSM303_U.h>
 
 SoftwareSerial fonaSS = SoftwareSerial(FONA_TX, FONA_RX);
 SoftwareSerial *fonaSerial = &fonaSS;
 LSM303 compass; 
 
+// In STANDBY mode we are not moving. Once we get coordinated we start 
+// navigating until the state is changed to STANDBY.
+enum state {STANDBY=0, NAVIGATE=1} boatState ;
 
 // Use this for FONA 800 and 808s
 Adafruit_FONA fona = Adafruit_FONA(FONA_RST);
 // Use this one for FONA 3G
 //Adafruit_FONA_3G fona = Adafruit_FONA_3G(FONA_RST);
 
-uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout = 0);
 boolean readSMS(char* sms_buffer);
 
 uint8_t type;
 
 void setup() 
 {
+  // Start in STANDBY mode
+  boatState = STANDBY ;
+  
   while (!Serial);
 
   Serial.begin(115200);
@@ -117,40 +120,26 @@ char smsBuffer[250];
 
 void loop() 
 {
-
-  //look for a new command
+  //look for a new SMS command
   if(readSMS(smsBuffer) == true)
   {
-      //parse new command
-      Serial.println("Got command");
-      //execute command code ...
+      Serial.println("Got SMS command:");
+      Serial.println(smsBuffer);
+
+      // Try to figure out what we got in the SMS.
+      // Can be new coordinates that will kickout a rescue,
+      // or a standby command that will stop navigation.
+      
+      
   }
 
  /*********************************************************************************************/
   
-  float latitude, longitude, speed_kph, heading, speed_mph, altitude;
+  float latitude, longitude, speed_kph, heading, altitude;
 
   // if you ask for an altitude reading, getGPS will return false if there isn't a 3D fix
   boolean gps_success = fona.getGPS(&latitude, &longitude, &speed_kph, &heading, &altitude);
-
-  if (gps_success) 
-  {
-
-//  Serial.print("GPS lat:");
-//  Serial.println(latitude, 6);
-//  Serial.print("GPS long:");
-//  Serial.println(longitude, 6);
-//  Serial.print("GPS speed KPH:");
-//  Serial.println(speed_kph);
-//  Serial.print("GPS speed MPH:");
-//  speed_mph = speed_kph * 0.621371192;
-//  Serial.println(speed_mph);
-    Serial.print("GPS heading:");
-    Serial.println(heading);
-//  Serial.print("GPS altitude:");
-//  Serial.println(altitude);
-  } 
-  else 
+  if (!gps_success) 
   {
     Serial.println("Waiting for FONA GPS 3D fix...");
     delay(1000);
@@ -196,74 +185,6 @@ void loop()
 
   delay(2000);
 }
-/*
-char readBlocking() 
-{
-  while (!Serial.available());
-  return Serial.read();
-}
-
-uint16_t readnumber() 
-{
-  uint16_t x = 0;
-  char c;
-  while (! isdigit(c = readBlocking())) 
-  {
-    //Serial.print(c);
-  }
-  Serial.print(c);
-  x = c - '0';
-  while (isdigit(c = readBlocking())) 
-  {
-    Serial.print(c);
-    x *= 10;
-    x += c - '0';
-  }
-  return x;
-}
-*/
-uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout) 
-{
-  uint16_t buffidx = 0;
-  boolean timeoutvalid = true;
-  if (timeout == 0) timeoutvalid = false;
-
-  while (true) {
-    if (buffidx > maxbuff) 
-    {
-      //Serial.println(F("SPACE"));
-      break;
-    }
-
-    while (Serial.available()) 
-    {
-      char c =  Serial.read();
-
-      //Serial.print(c, HEX); Serial.print("#"); Serial.println(c);
-
-      if (c == '\r') continue;
-      if (c == 0xA) {
-        if (buffidx == 0)   // the first 0x0A is ignored
-          continue;
-
-        timeout = 0;         // the second 0x0A is the end of the line
-        timeoutvalid = true;
-        break;
-      }
-      buff[buffidx] = c;
-      buffidx++;
-    }
-
-    if (timeoutvalid && timeout == 0) 
-    {
-      //Serial.println(F("TIMEOUT"));
-      break;
-    }
-    delay(1);
-  }
-  buff[buffidx] = 0;  // null term
-  return buffidx;
-}
 
 
 /////////////////////////////////////
@@ -296,8 +217,7 @@ long CalcDistance(double lat1, double lon1, double lat2, double lon2)
   a = pow(sin(dlat/2),2) + cos(dtor(lat1)) * cos(dtor(lat2)) * pow(sin(dlon/2),2);
   c = 2 * atan2(sqrt(a), sqrt(1-a));
   
-////  dist = 20925656.2 * c;  //radius of the earth (6378140 meters) in feet 20925656.2
-  dist = 6371000 * c;
+  dist = 6371000 * c; //radius of the earth (6378000 meters)
 
   return( (long) dist + 0.5);
 }
@@ -316,18 +236,6 @@ int CalcBearing(double lat1, double lon1, double lat2, double lon2)
   return (int) bearing + 0.5;
 }
 
-void ComputeDestPoint(double lat1, double lon1, int iBear, int iDist, double *lat2, double *lon2)
-{
-  double bearing = dtor((double) iBear);
-  double dist = (double) iDist / 6371000;
-  lat1 = dtor(lat1);
-  lon1 = dtor(lon1);
-  *lat2 = asin(sin(lat1)* cos(dist)+ cos(lat1)* sin(dist)*cos(bearing));
-  *lon2 = lon1 + atan2(sin(bearing)*sin(dist)*cos(lat1), cos(dist)-sin(lat1)*sin(*lat2));
-  *lon2 = fmod( *lon2 + 3 * PI, 2*PI )- PI;
-  *lon2 = rtod( *lon2);
-  *lat2 = rtod( *lat2);
-}
 
 void turnTo(int degrees)
 {
