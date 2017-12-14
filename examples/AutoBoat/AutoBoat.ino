@@ -70,7 +70,7 @@ void setup()
   Serial.println(F("Looking for FONA808"));
   Serial.println(F("Initializing....(May take 3 seconds)"));
 
-  fonaSerial->begin(4800);
+  fonaSerial->begin(57600);
   if (! fona.begin(*fonaSerial)) {
     Serial.println(F("Couldn't find FONA"));
     while (1);
