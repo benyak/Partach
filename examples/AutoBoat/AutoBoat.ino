@@ -143,16 +143,18 @@ void loop()
 
       if(result ==2) // Found 2 coordinates, navigate to it
       {
-        Serial.println("Navigating to destination"); 
         boatState = NAVIGATE ;
         // Update destination coordinates
         dstLat = atof(latStr);
         dstLon  = atof(lonStr);
+        Serial.print("Latidude :"); Serial.println(dstLat);
+        Serial.print("Longitude"); Serial.println(dstLon); 
       }
       else
       {
         // We stop navigating
         boatState = STANDBY ;
+        Serial.println("Navigating stoped");
       }   
   }
 
@@ -179,17 +181,17 @@ void loop()
   north, in degrees.
   Use the +X axis as a reference. 
   */
-  heading = compass.heading((LSM303::vector<int>){1, 0, 0});
+  heading = compass.heading((LSM303::vector<int>){0, -1, 0});
   Serial.print("Compass Heading: ");
   Serial.println(heading);
   
   int bearing = CalcBearing(latitude, longitude, dstLat, dstLon);
-  Serial.print("Bearing to office: ");
+  Serial.print("Bearing to destination: ");
   Serial.print(bearing);
   Serial.println(" degrees");
   
   long distance = CalcDistance(latitude, longitude, dstLat, dstLon) ;
-  Serial.print("Distance to office: ");
+  Serial.print("Distance to destination: ");
   Serial.print(distance);
   Serial.println(" meters");
 
