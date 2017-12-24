@@ -44,7 +44,9 @@ void Boat::turn(int angle)
     else //left turn (larger than 180
     {
       int left_angle = 360 - angle;
+      Serial.print("left motor at=");Serial.print(this->throttle_in_pct_);Serial.println("%");
       this->left_motor_.setSpeedPercent(this->throttle_in_pct_);
+      Serial.print("right motor at=");Serial.print(this->map_angle_to_speed_(left_angle));Serial.println("%");
       this->right_motor_.setSpeedPercent(this->map_angle_to_speed_(left_angle));
     }
 
