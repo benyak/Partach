@@ -194,8 +194,15 @@ void loop()
   Serial.println(" meters");
 
   // TODO - stop????
-  if(distance < 5)
+  if(distance < 20)
+  {
     boatState = STANDBY ;
+    Serial.print("Tracking:");Serial.print(latitude);Serial.print(" ");Serial.print(longitude);Serial.print(" ");Serial.println("1");
+  }
+  else
+  {
+      Serial.print("Tracking:");Serial.print(latitude);Serial.print(" ");Serial.print(longitude);Serial.print(" ");Serial.println("0");
+  }
 
   // Normalize turn
   int turn = bearing - heading ;
