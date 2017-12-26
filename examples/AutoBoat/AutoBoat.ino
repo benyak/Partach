@@ -143,11 +143,11 @@ void loop()
 
       if(result ==2) // Found 2 coordinates, navigate to it
       {
-        Serial.println("Navigating to destination"); 
         boatState = NAVIGATE ;
         // Update destination coordinates
         dstLat = atof(latStr);
         dstLon  = atof(lonStr);
+        Serial.print("New Waypoint: ");Serial.print(dstLat,4);Serial.print(" ");Serial.println(dstLon,4);
       }
       else
       {
@@ -197,10 +197,13 @@ void loop()
   Serial.print("Destination: "); Serial.print(dstLat); Serial.print(",");Serial.println(dstLon);
   
   // TODO - stop????
-  if(distance < 20)
+  if(distance < 20 )
   {
+    if(boatState != STANDBY)
+    {
+      Serial.print("Tracking: ");Serial.print(latitude,4);Serial.print(" ");Serial.print(longitude,4);Serial.print(" ");Serial.println("1");
+    }
     boatState = STANDBY ;
-    Serial.print("Tracking: ");Serial.print(latitude,4);Serial.print(" ");Serial.print(longitude,4);Serial.print(" ");Serial.println("1");
   }
   else
   {
@@ -213,7 +216,7 @@ void loop()
     turn += 360 ;
 
   Serial.print("Turn: ");
-  Serial.print(turn);
+  Serial.println(turn);
 
   // Command the Servo to make the actual turn
   if(boatState == STANDBY)
