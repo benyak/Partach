@@ -213,7 +213,7 @@ void loop()
     turn += 360 ;
 
   Serial.print("Turn: ");
-  Serial.print(turn);
+  Serial.println(turn);
 
   // Command the Servo to make the actual turn
   if(boatState == STANDBY)
