@@ -143,18 +143,16 @@ void loop()
 
       if(result ==2) // Found 2 coordinates, navigate to it
       {
+        Serial.println("Navigating to destination"); 
         boatState = NAVIGATE ;
         // Update destination coordinates
         dstLat = atof(latStr);
         dstLon  = atof(lonStr);
-        Serial.print("Latidude :"); Serial.println(dstLat);
-        Serial.print("Longitude"); Serial.println(dstLon); 
       }
       else
       {
         // We stop navigating
         boatState = STANDBY ;
-        Serial.println("Navigating stoped");
       }   
   }
 
@@ -186,12 +184,12 @@ void loop()
   Serial.println(heading);
   
   int bearing = CalcBearing(latitude, longitude, dstLat, dstLon);
-  Serial.print("Bearing to destination: ");
+  Serial.print("Bearing to office: ");
   Serial.print(bearing);
   Serial.println(" degrees");
   
   long distance = CalcDistance(latitude, longitude, dstLat, dstLon) ;
-  Serial.print("Distance to destination: ");
+  Serial.print("Distance to office: ");
   Serial.print(distance);
   Serial.println(" meters");
 
@@ -199,11 +197,11 @@ void loop()
   if(distance < 20)
   {
     boatState = STANDBY ;
-    Serial.print("Tracking:");Serial.print(latitude);Serial.print(" ");Serial.print(longitude);Serial.print(" ");Serial.println("1");
+    Serial.print("Tracking: ");Serial.print(latitude,4);Serial.print(" ");Serial.print(longitude,4);Serial.print(" ");Serial.println("1");
   }
   else
   {
-      Serial.print("Tracking:");Serial.print(latitude);Serial.print(" ");Serial.print(longitude);Serial.print(" ");Serial.println("0");
+    Serial.print("Tracking: ");Serial.print(latitude,4);Serial.print(" ");Serial.print(longitude,4);Serial.print(" ");Serial.println("0");
   }
 
   // Normalize turn

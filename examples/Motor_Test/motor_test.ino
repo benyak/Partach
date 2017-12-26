@@ -14,7 +14,7 @@ void setup()
   Serial.println("Motor setup");
   
 } 
- 
+  
  
 float read_voltage_on_bat()
 {    
@@ -45,11 +45,15 @@ void loop()
     }
   }*/
 
+  while(1){
   Serial.println(read_voltage_on_bat());
 
   Serial.println("boat go");
   my_boat.go();
-  delay(10000);
+  delay(1000);
+  }
+
+  /*
   Serial.println("boat stop");
   my_boat.stop();
   delay(5000);
@@ -59,7 +63,7 @@ void loop()
   Serial.println("boat turn 50 degree");
   my_boat.turn(50);
   delay(5000);
-
+  */
 } 
 
 
