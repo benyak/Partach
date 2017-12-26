@@ -181,7 +181,7 @@ void loop()
   north, in degrees.
   Use the +X axis as a reference. 
   */
-  heading = compass.heading((LSM303::vector<int>){0, -1, 0});
+  heading = compass.heading((LSM303::vector<int>){1, 0, 0});
   Serial.print("Compass Heading: ");
   Serial.println(heading);
   
