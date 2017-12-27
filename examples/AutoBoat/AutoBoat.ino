@@ -129,6 +129,9 @@ char smsBuffer[250];
 
 void loop() 
 {
+  unsigned long tracking_print_time = millis();
+  
+
   //look for a new SMS command
   if(readSMS(smsBuffer) == true)
   {
@@ -207,7 +210,11 @@ void loop()
   }
   else
   {
-    Serial.print("Tracking: ");Serial.print(latitude,4);Serial.print(" ");Serial.print(longitude,4);Serial.print(" ");Serial.println("0");
+      if(millis() - tracking_print_time >= 10000) //log every 10 seconds
+      {
+        tracking_print_time = millis();
+        Serial.print("Tracking: ");Serial.print(latitude,4);Serial.print(" ");Serial.print(longitude,4);Serial.print(" ");Serial.println("0");
+      }
   }
 
   // Normalize turn
@@ -224,7 +231,7 @@ void loop()
   else
     myBoat.turn(turn) ;
 
-  delay(2000);
+  //delay(2000);
 }
 
 
