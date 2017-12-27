@@ -147,7 +147,7 @@ void loop()
         // Update destination coordinates
         dstLat = atof(latStr);
         dstLon  = atof(lonStr);
-        Serial.print("New Waypoint: ");Serial.print(dstLat,4);Serial.print(" ");Serial.println(dstLon,4);
+        Serial.print("New Waypoint: ");Serial.print(dstLat,4);Serial.print(" ");Serial.print(dstLon,4);Serial.println(" 0")
       }
       else
       {
