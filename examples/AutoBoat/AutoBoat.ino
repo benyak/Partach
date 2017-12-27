@@ -183,16 +183,19 @@ void loop()
   Serial.print("Compass Heading: ");
   Serial.println(heading);
   
-  int bearing = CalcBearing(latitude, longitude, dstLat, dstLon);
-  Serial.print("Bearing to office: ");
+  int bearing = CalcBearing(dtor(latitude), dtor(longitude), dtor(dstLat), dtor(dstLon));
+  Serial.print("Bearing to destination: ");
   Serial.print(bearing);
   Serial.println(" degrees");
   
   long distance = CalcDistance(latitude, longitude, dstLat, dstLon) ;
-  Serial.print("Distance to office: ");
+  Serial.print("Distance to destination: ");
   Serial.print(distance);
   Serial.println(" meters");
 
+  Serial.print("State: "); Serial.println(boatState);
+  Serial.print("Destination: "); Serial.print(dstLat); Serial.print(",");Serial.println(dstLon);
+  
   // TODO - stop????
   if(distance < 20 )
   {
